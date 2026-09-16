@@ -1,10 +1,12 @@
 # SRM Credit Engine
 
-Motor decimal, cadastro, simulação, liquidação individual/em lote, extrato, CSV e edição de pendentes implementados. Backend: 98 testes sem banco e 22 integrações aprovados no `verify` do candidato em 16/09 às 04:37:42 -03:00 (120 no total, relatório conferido). Lote implementado somente no frontend, sem mudanças no backend: 32 testes frontend, TypeScript e build aprovados. Fluxos reais de reconfirmação, recuperação, CSV, edição e lote foram conferidos pelo MCP Playwright. O checklist manual foi concluído; revisão humana final, setup limpo e publicação da entrega continuam pendentes.
+Motor de precificação (Strategy), cadastro, simulação, liquidação individual/em lote, extrato, importação CSV e edição de pendentes para uma FIDC operar recebíveis em BRL/USD com precisão decimal e liquidação idempotente. Backend: 120 testes (98 sem banco + 22 integração PostgreSQL). Frontend: 32 testes de componente, TypeScript e build. Evidências de execução e cenários reais (Playwright/manual) em [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
+
+## Documentos
+
+[SPEC](SPEC.md) · [decisões](DECISIONS.md) · [ER](docs/ER.md) · [review do Anexo A](REVIEW.md) · [uso de IA](AI_USAGE.md) · [evidências de validação](docs/EVIDENCIAS.md) · [aferição de latência](docs/PERFORMANCE.md) · [checklist de entrega](docs/CHECKLIST-ENTREGA.md).
 
 ## Liquidação em lote
-
-Documentos: [SPEC](SPEC.md), [decisões](DECISIONS.md), [ER](docs/ER.md), [review do Anexo A](REVIEW.md), [uso de IA](AI_USAGE.md), [aferição local](docs/PERFORMANCE.md) e [checklist de entrega](docs/CHECKLIST-ENTREGA.md). Os documentos não substituem revisão e defesa do candidato.
 
 Na lista de pendentes, use **Adicionar ao lote** nos títulos desejados (até 100, entre páginas). Clique em **Revisar lote**, confira as condições e marque **Autorizo** em cada título que deseja liquidar; nenhum é marcado automaticamente. O botão **Liquidar selecionados** envia um título por vez. Os totais selecionados são separados por moeda, somados em centavos inteiros com BigInt; não existe conversão nem precificação no navegador.
 
@@ -14,15 +16,15 @@ Falha técnica interrompe novos envios: o item enviado fica com resultado a conf
 
 Limites: cesta, resultados e seleções do lote não são persistidos; após recarga, somente tentativas incertas são recuperadas e as liquidações concluídas aparecem no extrato. Refaça a seleção dos pendentes restantes. Limpar/refazer o lote ou abrir revisão/edição individual descarta a revisão coletiva da tela, sem apagar tentativas locais. Múltiplas abas não compartilham uma fila global; a proteção transacional/idempotente final continua no backend.
 
-Teste real de 16/09 às 04:45 -03:00: três títulos fictícios `AUTO-LOTE-20260916-0444-1/2/3`. Os itens 1 e 3 liquidaram BRL 92,86 cada; item 2 teve face alterada de 100 para 120 após revisão, exigiu reconfirmação de USD 15,48 → 18,57. Perda de resposta após commit, recarga e repetição exata retornaram HTTP 200; consulta encontrou exatamente três liquidações, sem duplicação. Registros mantidos para consulta. Cotação não foi alterada neste teste.
+Cenário real de perda de resposta, recarga e recuperação sem duplicação: [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 ## Editar pendentes
 
 Em **Liquidar um pendente**, clique em **Editar**. A tela consulta o cadastro atual e permite alterar valor, vencimento, tipo e moeda. Cedente e código permanecem fixos. Abrir a edição descarta a simulação e autorização anteriores; depois de salvar, clique em Revisar para obter novas condições. Editar não liquida e USD não exige cotação disponível para salvar.
 
-`PUT /receivables/{id}` recebe os quatro campos obrigatórios, no formato do schema Simulate da OpenAPI. Reutiliza validação do cadastro e bloqueio `FOR UPDATE NOWAIT` da liquidação. Título liquidado ou em processamento retorna 409. Nenhuma alteração de schema foi necessária. Não há versionamento entre duas edições: a última edição aceita prevalece; isso não permite editar um título liquidado. Em resposta incerta, fechar e abrir Editar consulta o estado atual antes de repetir; não há retry automático.
+`PUT /receivables/{id}` recebe os quatro campos obrigatórios, no formato do schema Simulate da OpenAPI. Reutiliza validação do cadastro e bloqueio `FOR UPDATE NOWAIT` da liquidação. Título liquidado ou em processamento retorna 409. Não há versionamento entre duas edições: a última edição aceita prevalece — isso não permite editar um título liquidado. Em resposta incerta, fechar e abrir Editar consulta o estado atual antes de repetir; não há retry automático.
 
-Teste real: `AUTO-CSV-20260915-2245` alterado para face BRL 1250,50, cheque pré-datado, vencimento 20/12/2026, pagamento BRL. Permaneceu PENDING; identidade preservada e nova autorização desmarcada. Tentativa de editar `AUTO-RECONF-20260915-2217` liquidado retornou ALREADY_SETTLED, sem alteração. Nenhuma nova liquidação foi feita neste incremento.
+Cenário real de edição bloqueada em título já liquidado: [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 ## Importação CSV
 
@@ -34,7 +36,7 @@ Limites: 100 títulos por padrão (`CSV_MAX_ROWS`, inteiro positivo), 256 KB por
 
 Endpoint de prévia: `POST /receivables/import-preview`, multipart com campo `file`. Contrato em `/openapi.json`. A prévia não reserva títulos nem garante cadastro posterior.
 
-Teste real em 15/09 às 22:46 -03:00: arquivo com quatro linhas, somente uma válida cadastrada; reenvio detectou duplicado, sem novas liquidações. Registro fictício mantido: `AUTO-CSV-20260915-2245`, PENDING, ID `2353eb67-d472-4366-be1b-8d7f7b80877c`.
+Cenário real com arquivo misto (válida/desconhecida/duplicadas) e reenvio: [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 ## Ambiente
 
@@ -48,7 +50,7 @@ O cadastro não liquida. Em **Liquidar um pendente**, a lista paginada mostra PE
 
 Antes do envio, a chave e o JSON exato da tentativa são salvos no localStorage. Falha de rede, timeout de 15 segundos, resposta técnica ou operação ocupada preservam a tentativa. **Consultar ou concluir tentativa** repete somente esse pedido/chave e pode efetivar a liquidação ainda não realizada. Não há reenvio automático, inclusive após recarga. Resposta definitiva remove a tentativa; condições alteradas voltam à revisão. Se o armazenamento falhar antes do envio, nada é enviado. Tentativas pendentes bloqueiam novas confirmações nesta tela até serem esclarecidas.
 
-A recuperação vale apenas no mesmo navegador/perfil e origem (use sempre `http://127.0.0.1:5173`; localhost é outra origem). Não limpar dados do navegador enquanto houver tentativas incertas. Múltiplas abas podem iniciar tentativas distintas; a proteção final contra duplicação permanece no backend. Os registros locais usam uma chave por tentativa, sem sobrescrever outras tentativas. A reconfirmação real foi conferida pelo Playwright: cotação 5,50 → 6,00, comparativo anterior/atual, autorização desmarcada e botão bloqueado. Uma resposta foi descartada após o servidor concluir a liquidação; recarga preservou a tentativa e repetição manual retornou HTTP 200 com a mesma chave/JSON e uma única liquidação. Registro fictício `AUTO-RECONF-20260915-2217`; cotação de teste 6,00 permanece no ambiente.
+A recuperação vale apenas no mesmo navegador/perfil e origem (use sempre `http://127.0.0.1:5173`; localhost é outra origem). Não limpar dados do navegador enquanto houver tentativas incertas. Múltiplas abas podem iniciar tentativas distintas; a proteção final contra duplicação permanece no backend. Os registros locais usam uma chave por tentativa, sem sobrescrever outras tentativas. Cenário real de reconfirmação (cotação alterada) e recuperação (resposta perdida, recarga, replay) em [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 Com o backend iniciado em outro terminal, execute a partir da raiz do repositório:
 
@@ -65,7 +67,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-No PowerShell, use npm.cmd para não depender da política de execução do npm.ps1. No ambiente restrito da IA, o carregador padrão do Vite encontrou `spawn EPERM`. As alternativas suportadas abaixo passaram (32 testes e build), sem alteração de permissões do sistema:
+No PowerShell, use npm.cmd para não depender da política de execução do npm.ps1. Se o carregador padrão do Vite falhar com `spawn EPERM` (comum em ambientes com restrição de permissão a processos filho), use as alternativas abaixo, que não exigem mudar permissões do sistema:
 
 ```powershell
 npm.cmd test -- --configLoader native --pool threads
@@ -73,7 +75,7 @@ npm.cmd run build -- --configLoader native
 npm.cmd run dev -- --configLoader native
 ```
 
-O build gera `frontend/dist`; o proxy descrito acima é de desenvolvimento, não configuração de publicação. Testes de componentes usam respostas simuladas. O bloqueio inicial do navegador foi superado: os cenários reais executados com MCP Playwright estão registrados no AI_USAGE. O checklist manual completo também foi executado pelo candidato; as duas evidências permanecem documentadas separadamente.
+O build gera `frontend/dist`; o proxy descrito acima é de desenvolvimento, não configuração de publicação. Testes de componentes usam respostas simuladas — cenários reais contra a API e o checklist manual ponta a ponta estão em [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 ### Backend
 
@@ -89,7 +91,7 @@ No Windows, a partir desta pasta:
 
 No Linux/macOS: `./mvnw -B -ntp test` (pode ser necessário conceder permissão de execução ao arquivo).
 
-O primeiro uso baixa Maven e dependências. Neste ambiente houve falha no download do Wrapper pelo PowerShell; foi usado o ZIP Maven 3.9.16 já disponível, carregado no cache local do Wrapper. A execução via Wrapper com esse cache foi verificada. Essa condição local não foi contornada alterando o script distribuído pelo Maven.
+O primeiro uso baixa Maven e dependências. Se o download automático do Wrapper falhar (bloqueio de rede/PowerShell), instale Maven 3.9.16 localmente e aponte `MAVEN_HOME` para o cache do Wrapper — sem editar o script distribuído pelo Maven.
 
 Os testes cobrem os três golden cases, deságio, escala, HALF_EVEN, ordem de conversão, limites de entrada e aniversários de calendário. O teste de contexto genérico do scaffold foi transferido para a fase de integração com PostgreSQL isolado, para que testes de domínio não exijam banco.
 
@@ -203,23 +205,13 @@ Valores muito pequenos podem arredondar a zero segundo a regra financeira atual.
 
 ## Situação da verificação
 
-Resultado vigente: 120 testes de backend aprovados pelo candidato em 16/09 (98 sem banco + 22 integrações), 32 frontend e build aprovados pela IA. As execuções abaixo são históricas, não devem ser somadas entre si. Aferição local BRL com 100 chamadas sequenciais teve p95 6,9136 ms; condições e limitações em docs/PERFORMANCE.md.
+120 testes de backend (98 sem banco + 22 integração PostgreSQL via Testcontainers) e 32 de frontend, todos aprovados, cobrindo cadastro, câmbio, liquidação, reconfirmação, replay, rollback, concorrência, edição, extrato e CSV. Histórico de execuções e a aferição de latência (p95 6,9 ms local, não é teste de carga) em [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md) e [docs/PERFORMANCE.md](docs/PERFORMANCE.md). Para repetir: `docker compose up -d postgres` seguido de `verify`, em um terminal com acesso ao Docker Engine.
 
-Em 15/09/2026 às 00:09:54 -03:00, o candidato executou `verify` com BUILD SUCCESS. A IA conferiu os relatórios locais: 88 testes sem banco e 19 integrações PostgreSQL, total de 107, sem falhas, erros ou ignorados. Isso inclui filtros do extrato, limites temporais, paginação e preservação do histórico. A tentativa anterior da IA havia sido bloqueada pelo Docker; a execução bem-sucedida foi realizada pelo candidato.
+## Limitações conhecidas
 
-Em 14/09/2026 às 17:42:03 -03:00, o usuário executou `.\mvnw.cmd -B -ntp verify` com BUILD SUCCESS. Relatórios Surefire e Failsafe conferidos: 73 testes de domínio, serviço, API e estrutura OpenAPI, mais 16 testes de integração PostgreSQL — 89 no total, sem falhas, erros ou testes ignorados.
+Escopo fechado para Fullstack Júnior: sem CI, observabilidade, optimistic locking, integração cambial externa, C4 ou Compose orquestrando a aplicação — cortes documentados em [DECISIONS.md §10](DECISIONS.md). Além disso: câmbio é cadastrado manualmente, sem autenticação na demonstração, sem histórico de importação CSV, e a fila de lote/recuperação de tentativas vive no navegador (localStorage), não no backend. Pendências de entrega (setup em ambiente limpo, acesso dos avaliadores, horário limite) em [docs/CHECKLIST-ENTREGA.md](docs/CHECKLIST-ENTREGA.md).
 
-Os testes de integração cobrem migrations, seeds, JPA, cadastros, câmbio, snapshots, reconfirmação, replay, rollback após inserção e concorrência por chave/título. A revisão estática independente não identificou defeitos bloqueantes. Essa evidência valida os cenários automatizados implementados; não substitui revisão humana, a validação manual da interface ou a validação de alterações posteriores.
-
-O Docker funciona no terminal do usuário. O ambiente da IA apresentou `AccessDeniedException` ao acessar o pipe; por isso a execução de integração foi realizada pelo usuário. Para repetir a validação ou conferir mudanças novas, executar `verify` em um terminal com acesso ao engine.
-
-## Próximas etapas
-
-Próximo passo: revisão humana final dos documentos, setup limpo, conferência de segredos e preparação de entrega e defesa. Não tratar a implementação funcional como entrega publicada sem conferir esses itens.
-
-REVIEW do Anexo A e ER agora disponíveis. Pendências reais em docs/CHECKLIST-ENTREGA.md: setup limpo, paginação do SPEC, revisão humana/defesa, acesso dos avaliadores e horário limite. O escopo simplificado não atende integralmente às exigências de operação pleno/sênior (Compose da aplicação, optimistic locking, CI, observabilidade, C4); ver DECISIONS antes de apresentar o nível atendido.
-
-### Stack e organização
+## Stack e organização
 
 Monólito para manter transação local entre título e snapshot. Java/BigDecimal preserva precisão decimal; domínio independente de Spring facilita aferir o cálculo. PostgreSQL fornece constraints/locks/transações, Flyway versiona o schema. React/TypeScript separa componentes de cadastro/importação/edição e mantém o fluxo de liquidação no painel, sem store global. Material UI reduz trabalho de controles básicos. O servidor determina valores; o navegador somente apresenta e soma centavos já calculados.
 
