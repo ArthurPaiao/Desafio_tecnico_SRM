@@ -4,7 +4,38 @@ Material de apoio pessoal, não faz parte do pacote de avaliação e não é ref
 
 Formato: decisão, alternativas descartadas e o motivo, o ponto que um avaliador pode pressionar.
 
-## Prazo por vencimento
+## Ensaio de mudança ao vivo (a parte que mais pesa)
+
+O enunciado (§9.2) cita como exemplos "um novo tipo de recebível, uma nova moeda, ou uma mudança na política de arredondamento" para a alteração ao vivo de 30 a 40 minutos. Travar aqui é eliminatório independente da qualidade do resto do repositório. As três rotas abaixo foram mapeadas direto no código atual (16/09), com arquivo e linha, para não precisar procurar durante a banca.
+
+### 1. Novo tipo de recebível (o caso fácil, ensaiar para ganhar confiança)
+
+1. `ReceivableType.java`: adicionar a constante do enum.
+2. Criar `NovoTipoStrategy.java` implementando `PricingStrategy` (`type()` e `spread()`), seguindo `DuplicataStrategy`/`ChequeStrategy` como modelo.
+3. `CreditService.java:23`: **não é injeção do Spring**, é uma lista estática `List.of(new DuplicataStrategy(), new ChequeStrategy())`. Esquecer de acrescentar a nova Strategy aqui é o erro mais provável de esquecer ao vivo.
+4. Nova migration (`V2__...sql`, nunca editar a V1 já aplicada) alterando os dois `CHECK (type IN (...))`: `receivables.type` (V1 linha 28) e `settlements.type` (V1 linha 46).
+5. Frontend: acrescentar `<option>` em `Registration.tsx:78` e `EditReceivable.tsx:44`.
+6. Teste: novo caso na `@CsvSource` de `PricingEngineTest`, com valor calculado à mão (mesma fórmula, spread novo).
+
+### 2. Nova moeda (o caso caro, o que realmente separa quem entende do que decorou)
+
+Este é bem mais caro que o de tipo, porque moeda está espalhada em oito lugares, não um:
+
+- `PaymentCurrency.java`: novo valor no enum.
+- Três `CHECK` no schema, todos exigindo nova migration: `exchange_rates.currency_pair = 'USD/BRL'` (V1:17, é **igualdade fixa**, não uma lista, o mais restritivo dos três), `receivables.payment_currency IN ('BRL','USD')` (V1:31), `settlements.currency IN ('BRL','USD')` (V1:56).
+- O `CHECK` composto de `settlements` (V1:63-66) só sabe tratar dois ramos, `currency = 'BRL'` ou `currency = 'USD'`; precisa virar uma regra geral tipo "BRL não tem câmbio, qualquer outra moeda tem".
+- `PricingEngine.calculate()`: `if (currency == PaymentCurrency.USD)` é binário; precisa virar `if (currency != PaymentCurrency.BRL)` ou equivalente.
+- `CreditService.java:94-97` e `:127`: o par `"USD/BRL"` está hardcoded como string literal em três pontos (busca da cotação vigente, mensagem de erro, validação de par suportado no cadastro de câmbio).
+- `Contracts.java:34` e `CreditController.java:50`: o DTO de cotação valida `@Pattern(regexp = "USD/BRL")` e o endpoint de consulta tem esse valor como default do query param.
+- Frontend: os dois `<select>` de moeda (`Registration.tsx:79`, `EditReceivable.tsx:45`) e, fácil de esquecer, `SettlementPanel.tsx:13`: `const sums: Record<string, bigint> = { BRL: 0n, USD: 0n }` — os totais do lote têm as moedas hardcoded também.
+
+Se pedirem esse cenário, a resposta que demonstra domínio não é "eu mudo esses oito lugares": é explicar **por que** está espalhado assim (constraint de banco como fonte de verdade da integridade, não uma tabela de moedas dinâmica, porque o escopo júnior tem exatamente duas moedas) e então mudar metodicamente, migration primeiro, domínio depois, API depois, frontend por último, testando C1/C2/C3 continuam passando a cada etapa.
+
+### 3. Mudança na política de arredondamento
+
+Ponto mais barato de implementar, mais fácil de errar silenciosamente. Os dois lugares literais são `PricingEngine.java`: `face.divide(denominator, 2, RoundingMode.HALF_EVEN)` e `vp.divide(usedRate, 2, RoundingMode.HALF_EVEN)`. Se a escala mudar (2 → 4 casas, por exemplo), as colunas `NUMERIC(19,2)` do banco (dinheiro) também precisam de migration, e `DecimalRules.require(..., scale, ...)` passa a receber outro valor.
+
+**A pegadinha real**: mudar a regra invalida os três golden cases. `92859.94`, `23337.77` e `17094.67` são os resultados da regra *atual*; com `HALF_UP` em vez de `HALF_EVEN`, ou outra escala, esses números mudam. Se pedirem essa mudança ao vivo, o exercício implícito é recalcular o C1 na mão (ou com uma REPL) e atualizar o teste com o valor correto, não só trocar o enum do `RoundingMode` e rodar `mvnw test` torcendo. Vale treinar esse cálculo manual antes da banca: `100000 / (1.025)^3`, arredondar pela nova regra, comparar com o que o código produzir.
 
 - **Escolhida:** aniversário mensal a partir da data original, com ajuste para o último dia disponível, arredondando para cima.
 - **Descartadas:** dias corridos dividido por 30 (meses reais têm durações diferentes, e 3 meses de calendário podem virar 4 períodos de cobrança); prazo fracionário por dias (exigiria potência fracionária, fora do escopo de `BigDecimal.pow(int)`); aceitar só vencimentos que caiam exatamente em meses inteiros (rejeitaria a maioria dos recebíveis reais).
