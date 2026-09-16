@@ -1,0 +1,3 @@
+cedente_codigo;titulo_codigo;tipo;valor_face;vencimento;moeda_pagamento
+CED-001;CSV-BRL-001;DUPLICATA_MERCANTIL;1000,00;15/12/2026;BRL
+CED-002;CSV-USD-001;CHEQUE_PRE_DATADO;2500,50;15/12/2026;USD

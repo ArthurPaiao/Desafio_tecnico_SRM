@@ -1,0 +1,1599 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SRM Credit Engine",
+    "version": "0.5.0",
+    "description": "Cadastro, prévia CSV, consulta, simulação e liquidação individual com idempotência. Valores decimais em strings. Data de negócio America/Sao_Paulo. Ambiente demonstrativo local sem autenticação; não expor publicamente."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "paths": {
+    "/receivables/import-preview": {
+      "post": {
+        "summary": "Validar CSV sem persistir títulos",
+        "description": "UTF-8 (BOM opcional), delimitador ;, aspas CSV, decimal com vírgula sem milhar, data DD/MM/AAAA. Cabeçalhos cedente_codigo;titulo_codigo;tipo;valor_face;vencimento;moeda_pagamento, reordenáveis, sem extras/duplicados. Máximo 256 KB e 100 títulos por padrão (CSV_MAX_ROWS). Linhas inválidas contam; arquivo excessivo ou malformado é rejeitado por inteiro. Todas as ocorrências de cedente/título repetido são inválidas. A confirmação usa POST /receivables para cada linha selecionada, revalidando regras e unicidade. Nenhuma liquidação automática ou armazenamento de CSV.",
+        "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "type": "object", "required": ["file"], "properties": { "file": { "type": "string", "format": "binary" } } } } } },
+        "responses": {
+          "200": { "description": "Prévia, inclusive erros por linha; request é null para linhas inválidas", "content": { "application/json": { "schema": {
+            "type": "object", "required": ["maxRows", "rows"], "properties": {
+              "maxRows": { "type": "integer", "minimum": 1 },
+              "rows": { "type": "array", "items": { "type": "object", "required": ["line", "values", "request", "errors"], "properties": {
+                "line": { "type": "integer", "description": "Linha física inicial do registro; cabeçalho na linha 1" },
+                "values": { "type": "array", "items": { "type": "string" }, "minItems": 6, "maxItems": 6, "description": "Valores normalizados na ordem dos cabeçalhos documentados" },
+                "request": { "anyOf": [{ "$ref": "#/components/schemas/CreateReceivable" }, { "type": "null" }] },
+                "errors": { "type": "array", "items": { "type": "string" } }
+              } } }
+            }
+          } } } },
+          "400": { "description": "Arquivo vazio, UTF-8/estrutura inválidos ou limite de títulos excedido" },
+          "413": { "description": "Arquivo ou requisição excede o limite de upload" },
+          "500": { "description": "Falha técnica; nenhuma linha foi cadastrada pela prévia" }
+        }
+      }
+    },
+    "/assignors": {
+      "get": {
+        "summary": "Listar cedentes por código crescente",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Índice base zero. page × size deve ser <= 2147483647."
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignorPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/receivables": {
+      "get": {
+        "summary": "Listar recebíveis por createdAt e id decrescentes",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Índice base zero. page × size deve ser <= 2147483647."
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivablePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cadastrar PENDING, sem simular nem liquidar",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReceivable"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receivable"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URI relativa para consultar o cadastro",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identificação duplicada; não sobrescreve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/receivables/{id}": {
+      "put": {
+        "summary": "Editar somente recebível PENDING",
+        "description": "Substitui valor, tipo, vencimento e moeda. Cedente/código/status não são alteráveis. Usa o mesmo bloqueio FOR UPDATE NOWAIT da liquidação. Edição não exige cotação. Após salvar, obter nova simulação; condições divergentes são rejeitadas na liquidação. Sem versionamento entre duas edições: a última edição aceita prevalece. Em resposta perdida, consultar GET antes de repetir.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Simulate" } } } },
+        "responses": {
+          "200": { "description": "Cadastro atualizado; nenhuma liquidação realizada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Receivable" } } } },
+          "400": { "description": "Campos inválidos, valor ou prazo fora dos limites" },
+          "404": { "description": "Título não encontrado" },
+          "409": { "description": "ALREADY_SETTLED ou OPERATION_IN_PROGRESS; não altera o título" },
+          "500": { "description": "Falha técnica; consultar cadastro antes de repetir" }
+        }
+      },
+      "get": {
+        "summary": "Consultar por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cadastro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receivable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exchange-rates": {
+      "get": {
+        "summary": "Listar cotações por validFrom e id decrescentes",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Índice base zero. page × size deve ser <= 2147483647."
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "pair",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "USD/BRL"
+              ],
+              "default": "USD/BRL"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRatePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Inserir cotação imutável; par/vigência únicos",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExchangeRate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRate"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URI relativa para consultar o cadastro",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identificação duplicada; não sobrescreve",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exchange-rates/{id}": {
+      "get": {
+        "summary": "Consultar por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cadastro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulations": {
+      "post": {
+        "summary": "Simular sem persistir",
+        "description": "Lê configuração atual do banco. USD usa a última cotação com validFrom <= calculatedAt; exige calculatedAt < validFrom + validade (seed 24h). Não recorre a cotação anterior. BRL não consulta câmbio. Divide VP BRL já arredondado pela cotação e arredonda USD com HALF_EVEN. Nenhuma garantia de condições para liquidação futura.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Simulate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado informativo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Simulation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cotação indisponível ou expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settlements": {
+      "post": {
+        "summary": "Liquidar integralmente com idempotência e reconfirmação",
+        "description": "Primeira execução 201; repetição semanticamente igual da chave/pedido concluído 200, antes de recalcular/validar câmbio. Mesma chave com pedido diferente: 409 IDEMPOTENCY_CONFLICT. Outra chave para SETTLED: 409 ALREADY_SETTLED. Concorrência em andamento: 409 OPERATION_IN_PROGRESS; não mudar chave/payload ao repetir. Divergência financeira: 409 CONDITIONS_CHANGED com current; confirmar novamente é uma nova intenção/chave. Chaves de operações concluídas ficam retidas sem TTL. Nenhuma transferência bancária real.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID gerado pelo cliente uma vez por intenção; reutilizar em resultado incerto."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettlementRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replay da liquidação original",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settlement"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Liquidação criada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settlement"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "URI relativa para consulta"
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recebível não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito; CONDITIONS_CHANGED inclui current. OPERATION_IN_PROGRESS preserva a intenção para retry manual.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ConditionsError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cotação ausente/expirada impede liquidação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Falha técnica; não presumir resultado pelo status de rede",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Consultar snapshots de liquidações por settledAt e id decrescentes",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Índice base zero. page × size deve ser <= 2147483647."
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Início inclusivo em settledAt. ISO 8601 com horário e offset; anos 0001–9999, precisão máxima de microssegundos.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Fim exclusivo em settledAt. Mesma precisão de from; deve ser posterior ao início quando ambos são informados.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "assignorId",
+            "in": "query",
+            "required": false,
+            "description": "ID do cedente registrado no snapshot.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "description": "Moeda de pagamento do snapshot.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BRL",
+                "USD"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettlementPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro técnico; sem dados internos na resposta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Filtros opcionais combináveis. Não recalcula históricos. Cedente inexistente ou página sem resultados retorna 200 com content vazio. Paginação por offset não congela a coleção entre requisições."
+      }
+    },
+    "/settlements/{id}": {
+      "get": {
+        "summary": "Consultar snapshot imutável de liquidação",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot persistido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settlement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Liquidação não encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Falha técnica",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/receivables/{id}/simulations": {
+      "post": {
+        "summary": "Simular título PENDING e obter expectedConditions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Título, cálculo e condições para confirmação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableSimulation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID, vencimento ou prazo inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Título não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Título já liquidado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cotação indisponível/expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Falha técnica",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ReceivableType": {
+        "type": "string",
+        "enum": [
+          "DUPLICATA_MERCANTIL",
+          "CHEQUE_PRE_DATADO"
+        ]
+      },
+      "PaymentCurrency": {
+        "type": "string",
+        "enum": [
+          "BRL",
+          "USD"
+        ]
+      },
+      "Status": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "SETTLED"
+        ]
+      },
+      "CreateReceivable": {
+        "type": "object",
+        "required": [
+          "assignorId",
+          "titleCode",
+          "faceValue",
+          "type",
+          "dueDate",
+          "paymentCurrency"
+        ],
+        "properties": {
+          "assignorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titleCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Não vazio; espaços nas pontas removidos. Unicidade com cedente, sensível a maiúsculas."
+          },
+          "faceValue": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "Positivo; NUMERIC(19,2), até 17 dígitos inteiros. Zeros finais extras são aceitos sem arredondar.",
+            "example": "100000.00"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ReceivableType"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "paymentCurrency": {
+            "$ref": "#/components/schemas/PaymentCurrency"
+          }
+        }
+      },
+      "Simulate": {
+        "type": "object",
+        "required": [
+          "faceValue",
+          "type",
+          "dueDate",
+          "paymentCurrency"
+        ],
+        "properties": {
+          "faceValue": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "Positivo; NUMERIC(19,2), até 17 dígitos inteiros. Zeros finais extras são aceitos sem arredondar.",
+            "example": "100000.00"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ReceivableType"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "paymentCurrency": {
+            "$ref": "#/components/schemas/PaymentCurrency"
+          }
+        }
+      },
+      "CreateExchangeRate": {
+        "type": "object",
+        "required": [
+          "pair",
+          "rate",
+          "validFrom"
+        ],
+        "properties": {
+          "pair": {
+            "type": "string",
+            "enum": [
+              "USD/BRL"
+            ]
+          },
+          "rate": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "BRL por USD; positivo, NUMERIC(24,10), até 14 dígitos inteiros."
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Offset obrigatório. Anos 0001–9999, até 6 casas fracionárias significativas. Pode ser futura."
+          }
+        }
+      },
+      "Assignor": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Receivable": {
+        "type": "object",
+        "required": [
+          "id",
+          "assignorId",
+          "titleCode",
+          "type",
+          "faceValue",
+          "dueDate",
+          "paymentCurrency",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titleCode": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ReceivableType"
+          },
+          "faceValue": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]{2}$",
+            "example": "92859.94"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "paymentCurrency": {
+            "$ref": "#/components/schemas/PaymentCurrency"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ExchangeRate": {
+        "type": "object",
+        "required": [
+          "id",
+          "pair",
+          "rate",
+          "validFrom",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pair": {
+            "type": "string",
+            "enum": [
+              "USD/BRL"
+            ]
+          },
+          "rate": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "Decimal em texto, ponto decimal, sem expoente; rejeita dígitos significativos além da precisão/escala."
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Simulation": {
+        "type": "object",
+        "required": [
+          "type",
+          "referenceDate",
+          "dueDate",
+          "calculatedAt",
+          "faceValueBrl",
+          "termMonths",
+          "baseRate",
+          "spread",
+          "effectiveRate",
+          "presentValueBrl",
+          "discountBrl",
+          "paymentCurrency",
+          "exchangeRateUsed",
+          "finalAmount",
+          "exchangeRateId",
+          "exchangeRateValidFrom"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ReceivableType"
+          },
+          "referenceDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "faceValueBrl": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]{2}$",
+            "example": "92859.94"
+          },
+          "termMonths": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "baseRate": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "Decimal em texto, ponto decimal, sem expoente; rejeita dígitos significativos além da precisão/escala."
+          },
+          "spread": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "Decimal em texto, ponto decimal, sem expoente; rejeita dígitos significativos além da precisão/escala."
+          },
+          "effectiveRate": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "Decimal em texto, ponto decimal, sem expoente; rejeita dígitos significativos além da precisão/escala."
+          },
+          "presentValueBrl": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]{2}$",
+            "example": "92859.94"
+          },
+          "discountBrl": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]{2}$",
+            "example": "92859.94"
+          },
+          "paymentCurrency": {
+            "$ref": "#/components/schemas/PaymentCurrency"
+          },
+          "exchangeRateUsed": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finalAmount": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]{2}$",
+            "example": "92859.94"
+          },
+          "exchangeRateId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "exchangeRateValidFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "fieldErrors"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "field",
+                "message"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "AssignorPage": {
+        "type": "object",
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Assignor"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "ReceivablePage": {
+        "type": "object",
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Receivable"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "ExchangeRatePage": {
+        "type": "object",
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExchangeRate"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "ExpectedConditions": {
+        "type": "object",
+        "required": [
+          "assignorId",
+          "titleCode",
+          "type",
+          "dueDate",
+          "termMonths",
+          "paymentCurrency",
+          "faceValueBrl",
+          "effectiveRate",
+          "presentValueBrl",
+          "discountBrl",
+          "finalAmount"
+        ],
+        "properties": {
+          "assignorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "titleCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "$ref": "#/components/schemas/ReceivableType"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "termMonths": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "paymentCurrency": {
+            "$ref": "#/components/schemas/PaymentCurrency"
+          },
+          "faceValueBrl": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "NUMERIC(19,2); normaliza zeros equivalentes sem arredondamento."
+          },
+          "effectiveRate": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "Decimal em texto, ponto decimal, sem expoente; rejeita dígitos significativos além da precisão/escala."
+          },
+          "presentValueBrl": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "NUMERIC(19,2); normaliza zeros equivalentes sem arredondamento."
+          },
+          "discountBrl": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "NUMERIC(19,2); normaliza zeros equivalentes sem arredondamento."
+          },
+          "finalAmount": {
+            "type": "string",
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "NUMERIC(19,2); normaliza zeros equivalentes sem arredondamento."
+          },
+          "exchangeRateUsed": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+(\\.[0-9]+)?$",
+            "maxLength": 64,
+            "description": "USD exige cotação positiva NUMERIC(24,10); BRL exige null ou campo omitido."
+          }
+        },
+        "description": "Condições exibidas ao usuário. Decimais são normalizados à escala do banco sem arredondar; escalas equivalentes têm a mesma intenção. Não contém IDs/vigência de cotação ou timestamps. Valores enviados não determinam o pagamento."
+      },
+      "SettlementRequest": {
+        "type": "object",
+        "required": [
+          "receivableId",
+          "expectedConditions"
+        ],
+        "properties": {
+          "receivableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedConditions": {
+            "$ref": "#/components/schemas/ExpectedConditions"
+          }
+        }
+      },
+      "ReceivableSimulation": {
+        "type": "object",
+        "required": [
+          "receivable",
+          "simulation",
+          "expectedConditions"
+        ],
+        "properties": {
+          "receivable": {
+            "$ref": "#/components/schemas/Receivable"
+          },
+          "simulation": {
+            "$ref": "#/components/schemas/Simulation"
+          },
+          "expectedConditions": {
+            "$ref": "#/components/schemas/ExpectedConditions"
+          }
+        }
+      },
+      "Settlement": {
+        "type": "object",
+        "required": [
+          "id",
+          "receivableId",
+          "idempotencyKey",
+          "assignorId",
+          "assignorName",
+          "titleCode",
+          "settledAt",
+          "calculation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receivableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignorName": {
+            "type": "string"
+          },
+          "titleCode": {
+            "type": "string"
+          },
+          "settledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "calculation": {
+            "$ref": "#/components/schemas/Simulation"
+          }
+        }
+      },
+      "ConditionsError": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "fieldErrors",
+          "current"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "field",
+                "message"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "current": {
+            "$ref": "#/components/schemas/ReceivableSimulation"
+          }
+        }
+      },
+      "SettlementPage": {
+        "type": "object",
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Settlement"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

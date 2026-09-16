@@ -1,0 +1,21 @@
+.topbar { background: #fff; border-bottom: 1px solid #dce3df; padding: 20px max(24px, calc((100vw - 1152px)/2)); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.topbar strong { color: #12584c; font-size: 22px; white-space: nowrap; }
+.topbar strong span { color: #4c615a; font-size: 15px; font-weight: 400; margin-left: 12px; }
+.filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; }
+input, select { width: 100%; min-width: 0; padding: 12px; border: 1px solid #879c92; border-radius: 6px; background: white; font: inherit; font-weight: 400; color: #182b23; }
+input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid #12584c; outline-offset: 3px; }
+.result-heading { display: flex; justify-content: space-between; padding: 24px; gap: 12px; }
+.table-scroll { overflow-x: auto; }
+.csv-preview { min-width: 650px; }
+.csv-preview th, .csv-preview td { white-space: normal; overflow-wrap: anywhere; }
+.csv-preview td:last-child { min-width: 220px; max-width: 320px; }
+.csv-preview input[type="checkbox"] { width: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+caption { text-align: left; padding: 0 24px 16px; color: #4c615a; font-size: 13px; }
+th, td { padding: 16px 20px; border-top: 1px solid #e2e8e4; vertical-align: top; white-space: nowrap; font-size: 14px; }
+th { background: #f4f7f5; color: #42584e; }
+summary { cursor: pointer; color: #12584c; }
+pre { max-width: 450px; overflow: auto; font-size: 12px; }
+.empty { padding: 24px; margin: 0; color: #4c615a; }
+@media (max-width: 650px) { .filters { grid-template-columns: 1fr; } .topbar { padding: 16px; flex-wrap: wrap; } h1 { font-size: 2rem !important; } }
