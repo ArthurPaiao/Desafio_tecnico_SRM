@@ -1,4 +1,4 @@
-# SRM Credit Engine — SPEC
+# SRM Credit Engine: SPEC
 
 ## Premissas
 
@@ -36,4 +36,4 @@ Pendentes permitem editar valor, vencimento, tipo e moeda, exigindo nova simula�
 
 O arredondamento de meses para cima e o bloqueio de vencidos são aceitáveis? Quais limites comerciais substituem os do case? A validade de 24 horas atende fins de semana? Deve haver cotação contratada? Quem mantém taxas e cedentes? Como evoluir para estorno, liquidação parcial e transferência real?
 
-Detalhes e justificativas: DECISIONS.md. Este texto é a versão curta de trabalho; conferir paginação de 1–2 páginas no formato final de entrega.
+Detalhes e justificativas: DECISIONS.md. Este texto é a versão curta de trabalho; conferir paginação de 1 a 2 páginas no formato final de entrega.

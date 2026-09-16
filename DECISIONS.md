@@ -1,4 +1,4 @@
-# SRM Credit Engine — Decisões aprovadas
+# SRM Credit Engine: decisões aprovadas
 
 Atualizado em 16/09/2026. Prazo informado pelo candidato: 18/09/2026, horário ainda não confirmado. Este documento registra as escolhas feitas na conversa e substitui decisões conflitantes do consolidado anterior. As decisões abaixo estão implementadas e testadas, salvo onde marcado como corte de escopo na seção 10.
 
@@ -54,7 +54,7 @@ Resultados de operação: liquidado, aguardando reconfirmação, erro de negóci
 
 Registrar liquidação, chave e mudança de estado em uma transação. Unicidade por título e chave, com atualização condicional ou bloqueio apropriado. Repetição da mesma chave/pedido concluído retorna a liquidação existente antes de recalcular ou validar expiração. Outra chave para título liquidado ou mesma chave com payload diferente: conflito.
 
-Após falha de rede, mostrar resultado incerto e ação “Consultar ou concluir tentativa”, que repete o pedido com a mesma chave. Explicar que pode concluir a liquidação se ela ainda não ocorreu. Não tentar novamente automaticamente.
+Após falha de rede, mostrar resultado incerto e ação "Consultar ou concluir tentativa", que repete o pedido com a mesma chave. Explicar que pode concluir a liquidação se ela ainda não ocorreu. Não tentar novamente automaticamente.
 
 Persistir no navegador somente tentativas sem resultado confirmado: identificador, chave e payload exato necessário à repetição. Ao esclarecer o resultado, remover a tentativa local. Isso funciona no mesmo navegador/perfil, não oferece recuperação entre computadores e não substitui a validação do servidor.
 
@@ -85,4 +85,4 @@ Fora: histórico de importação, armazenamento de CSV, cancelamento/substituiç
 
 SPEC curto, requisitos, DECISIONS, README executável, ER, OpenAPI, REVIEW do Anexo A em severidade/impacto/correção e AI_USAGE com prompts estratégicos, erro real detectado e decisões não delegadas. Repositório privado, acesso dos avaliadores, branches por funcionalidade e commits explicáveis. Defesa obrigatória.
 
-Esta conversa já contém evidência real para AI_USAGE: a afirmação inicial de cálculo “sem arredondar” com MathContext finito foi corrigida por revisão técnica; requisitos inicialmente excluíam idempotência, mas a leitura do core mostrou sua exigência. Não apresentar essa revisão documental como teste do sistema.
+Esta conversa já contém evidência real para AI_USAGE: a afirmação inicial de cálculo "sem arredondar" com MathContext finito foi corrigida por revisão técnica; requisitos inicialmente excluíam idempotência, mas a leitura do core mostrou sua exigência. Não apresentar essa revisão documental como teste do sistema.

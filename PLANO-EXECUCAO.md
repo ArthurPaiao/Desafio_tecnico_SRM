@@ -1,4 +1,4 @@
-# SRM Credit Engine — Plano até 18/09/2026
+# SRM Credit Engine: plano até 18/09/2026
 
 ## Diretório de trabalho vigente
 
@@ -16,9 +16,9 @@ O checklist manual de ponta a ponta foi concluído pelo candidato em 16/09: cada
 
 ### Histórico de incrementos
 
-Histórico — edição (23:12 -03:00): edição restrita de PENDING implementada com bloqueio compartilhado com liquidação. 98 testes sem banco, 26 frontend e build aprovados. Playwright confirmou edição dos quatro campos, nova revisão sem autorização e rejeição de alteração em SETTLED. CSV validado pelo candidato com 20 integrações aprovadas às 22:50:57; relatório conferido. Dois testes de edição adicionados: executar `verify` com 22 integrações antes de encerrar esta validação. Próximo incremento funcional: seleção e liquidação em lote.
+Histórico (edição, 23:12 -03:00): edição restrita de PENDING implementada com bloqueio compartilhado com liquidação. 98 testes sem banco, 26 frontend e build aprovados. Playwright confirmou edição dos quatro campos, nova revisão sem autorização e rejeição de alteração em SETTLED. CSV validado pelo candidato com 20 integrações aprovadas às 22:50:57; relatório conferido. Dois testes de edição adicionados: executar `verify` com 22 integrações antes de encerrar esta validação. Próximo incremento funcional: seleção e liquidação em lote.
 
-Histórico — CSV (22:46 -03:00): CSV implementado e testado pelo MCP Playwright contra a API real. Arquivo misto mostrou erros e duplicados; confirmação cadastrou somente a linha válida como PENDING; reenvio detectou duplicado e não criou liquidação. 95 testes sem banco, 23 frontend e build aprovados. `verify` da IA estava bloqueado pelo pipe Docker, sem validar integrações naquele momento. Próximo passo histórico: candidato executar `mvnw.cmd verify`; depois edição restrita de pendentes.
+Histórico (CSV, 22:46 -03:00): CSV implementado e testado pelo MCP Playwright contra a API real. Arquivo misto mostrou erros e duplicados; confirmação cadastrou somente a linha válida como PENDING; reenvio detectou duplicado e não criou liquidação. 95 testes sem banco, 23 frontend e build aprovados. `verify` da IA estava bloqueado pelo pipe Docker, sem validar integrações naquele momento. Próximo passo histórico: candidato executar `mvnw.cmd verify`; depois edição restrita de pendentes.
 
 Fluxo individual conferido pelo Playwright: cadastro USD, alteração de cotação 5,50 → 6,00 sem atualizar a prévia, comparativo anterior/atual, autorização desmarcada e reconfirmação obrigatória. Perda de resposta após commit, recarga sem envio automático e repetição manual com mesma chave/JSON retornaram uma única liquidação. BRL já havia sido confirmado pelo usuário. Registros de teste preservados, detalhes no AI_USAGE. Os parágrafos seguintes registram o histórico anterior.
 
@@ -26,7 +26,7 @@ Liquidação individual implementada e validada nos cenários automatizados: cad
 
 O Docker responde no terminal do usuário. A restrição ao pipe permanece específica do ambiente da IA; não é falha do engine nem pendência de validação da liquidação anterior. O extrato foi implementado e validado em 15/09: `verify` do candidato às 00:09:54 -03:00, com 88 testes sem banco e 19 integrações aprovadas (107 no total). Relatórios locais conferidos. Frontend individual implementado com cadastro, simulação, liquidação, reconfirmação e recuperação local; validação manual ponta a ponta, CSV e lote continuam pendentes. A etapa 1 ainda não está concluída.
 
-## Extrato concluído — próximo incremento: painel mínimo
+## Extrato concluído: próximo incremento é o painel mínimo
 
 1. Implementar `GET /settlements` com filtros combináveis por período de liquidação, cedente e moeda.
 2. Aplicar início inclusivo e fim exclusivo, paginação base zero (20 por padrão, máximo 100) e ordenação estável por instante/ID.
@@ -36,7 +36,7 @@ O Docker responde no terminal do usuário. A restrição ao pipe permanece espec
 
 CSV, edição de pendentes e lote permanecem nas etapas seguintes, sem cortes de escopo. A recuperação local da tentativa individual foi antecipada; sua integração ao lote segue pendente.
 
-Histórico — extrato (15/09): endpoint, validações e OpenAPI implementados e validados. Os 15 casos novos sem banco e 3 testes novos PostgreSQL passaram na execução do candidato. Próxima ação histórica: painel React/TypeScript/Vite/Material UI, começando por estrutura e extrato; depois cadastro, simulação automática e confirmação segura.
+Histórico (extrato, 15/09): endpoint, validações e OpenAPI implementados e validados. Os 15 casos novos sem banco e 3 testes novos PostgreSQL passaram na execução do candidato. Próxima ação histórica: painel React/TypeScript/Vite/Material UI, começando por estrutura e extrato; depois cadastro, simulação automática e confirmação segura.
 
 A tentativa de `verify` da IA em 15/09 falhou na inicialização do Docker/Testcontainers (19 erros de integração, antes de validar os cenários). Os 88 testes sem banco passaram nessa mesma execução. Esse bloqueio foi superado pela execução posterior do candidato, com os 19 testes de integração aprovados.
 
@@ -55,7 +55,7 @@ As constatações abaixo são históricas, anteriores à integração no reposit
 
 [SPEC.md](SPEC.md) resume premissas. [DECISIONS.md](DECISIONS.md) registra todas as decisões aprovadas e substitui escolhas conflitantes do consolidado anterior. [REQUISITOS-v2.md](REQUISITOS-v2.md) orienta os incrementos funcionais. Não usar SPEC-revisado ou o consolidado anterior isoladamente para gerar código.
 
-## 14/09 — Documentação, ambiente e motor
+## 14/09: documentação, ambiente e motor
 
 O scaffold inicialmente trabalhado em cópia isolada foi integrado ao repositório principal. Motor, datas, API e persistência foram implementados em incrementos. A validação daquela versão foi de 89 testes aprovados; o histórico de 27 testes e bloqueios iniciais está registrado no AI_USAGE.
 
@@ -70,7 +70,7 @@ O scaffold inicialmente trabalhado em cópia isolada foi integrado ao repositór
 
 Conclusão: motor e backend individual testados, incluindo integração PostgreSQL executada pelo usuário.
 
-## 15/09 — Core individual, primeira versão utilizável
+## 15/09: core individual, primeira versão utilizável
 
 - [x] Validar em PostgreSQL as migrations e os seeds já escritos (execução anterior do usuário, 6 testes aprovados).
 - [x] Implementar cadastro individual, simulação e seleção de cotação por vigência/expiração; testes sem banco aprovados.
@@ -94,7 +94,7 @@ Conclusão: motor e backend individual testados, incluindo integração PostgreS
 
 Conclusão da etapa 1: fluxo BRL e USD funcionando pela interface, sem duplicação por repetição; README provisório permite rodar. Não declarar concluída apenas porque endpoints funcionam isoladamente.
 
-## 16/09 — CSV e gestão dos pendentes
+## 16/09: CSV e gestão dos pendentes
 
 - [x] Disponibilizar modelo CSV e lista de códigos de cedentes.
 - [x] Parser/validação de arquivo e de linha, limite 100, duplicidade no arquivo e banco.
@@ -106,7 +106,7 @@ Conclusão da etapa 1: fluxo BRL e USD funcionando pela interface, sem duplicaç
 
 Conclusão: importar arquivo misto, cadastrar apenas os escolhidos válidos e reenviar sem duplicar títulos.
 
-## 17/09 — Lote, recuperação e fechamento
+## 17/09: lote, recuperação e fechamento
 
 - [x] Orquestração sequencial, transação por título, sucesso parcial e interrupção técnica.
 - [x] Mostrar valores anteriores/atuais e reconfirmar selecionados, sem pré-seleção.
@@ -117,11 +117,11 @@ Conclusão: importar arquivo misto, cadastrar apenas os escolhidos válidos e re
   - [x] Criar REVIEW do Anexo A, ER e checklist; corrigir informações antigas de execução no README/DECISIONS.
   - [x] Aferir meta local de latência: p95 6,9136 ms em 100 chamadas sequenciais BRL; método e limites em docs/PERFORMANCE.md.
 - [ ] Revisão humana final dos documentos e paginação final do SPEC. Git ainda sem commits/remoto; entrega não publicada.
-- [ ] Congelar novas funcionalidades ao fim do dia. Reservar bloco de 2–3 horas para correções e documentação, não preencher todo o tempo com funcionalidades.
+- [ ] Congelar novas funcionalidades ao fim do dia. Reservar bloco de 2 a 3 horas para correções e documentação, não preencher todo o tempo com funcionalidades.
 
 Conclusão: etapa 2 funcional e decisões consistentes com o código. Itens ainda incompletos devem aparecer como pendência real, não como teste passado ou corte previamente aprovado.
 
-## 18/09 — Entrega
+## 18/09: entrega
 
 - [ ] Rodar a partir de configuração limpa e do README, sem apagar dados pessoais ou banco existente.
 - [ ] Executar testes necessários e corrigir bloqueadores.

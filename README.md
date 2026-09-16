@@ -22,7 +22,7 @@ Cenário real de perda de resposta, recarga e recuperação sem duplicação: [d
 
 Em **Liquidar um pendente**, clique em **Editar**. A tela consulta o cadastro atual e permite alterar valor, vencimento, tipo e moeda. Cedente e código permanecem fixos. Abrir a edição descarta a simulação e autorização anteriores; depois de salvar, clique em Revisar para obter novas condições. Editar não liquida e USD não exige cotação disponível para salvar.
 
-`PUT /receivables/{id}` recebe os quatro campos obrigatórios, no formato do schema Simulate da OpenAPI. Reutiliza validação do cadastro e bloqueio `FOR UPDATE NOWAIT` da liquidação. Título liquidado ou em processamento retorna 409. Não há versionamento entre duas edições: a última edição aceita prevalece — isso não permite editar um título liquidado. Em resposta incerta, fechar e abrir Editar consulta o estado atual antes de repetir; não há retry automático.
+`PUT /receivables/{id}` recebe os quatro campos obrigatórios, no formato do schema Simulate da OpenAPI. Reutiliza validação do cadastro e bloqueio `FOR UPDATE NOWAIT` da liquidação. Título liquidado ou em processamento retorna 409. Não há versionamento entre duas edições: a última edição aceita prevalece, e isso não permite editar um título liquidado. Em resposta incerta, fechar e abrir Editar consulta o estado atual antes de repetir; não há retry automático.
 
 Cenário real de edição bloqueada em título já liquidado: [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
@@ -40,7 +40,7 @@ Cenário real com arquivo misto (válida/desconhecida/duplicadas) e reenvio: [do
 
 ## Ambiente
 
-### Frontend — fluxo individual
+### Frontend: fluxo individual
 
 A pasta `frontend` contém React 19.3, TypeScript 7.0.2, Vite 8.3 e Material UI 9.4, com versões exatas e `package-lock.json`. Node 24.x (verificado com 24.19.0). Compatibilidade conferida no registro npm e nas documentações oficiais de [Vite](https://vite.dev/guide/) e [Material UI](https://mui.com/material-ui/getting-started/installation/).
 
@@ -75,7 +75,7 @@ npm.cmd run build -- --configLoader native
 npm.cmd run dev -- --configLoader native
 ```
 
-O build gera `frontend/dist`; o proxy descrito acima é de desenvolvimento, não configuração de publicação. Testes de componentes usam respostas simuladas — cenários reais contra a API e o checklist manual ponta a ponta estão em [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
+O build gera `frontend/dist`; o proxy descrito acima é de desenvolvimento, não configuração de publicação. Testes de componentes usam respostas simuladas; cenários reais contra a API e o checklist manual ponta a ponta estão em [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 ### Backend
 
@@ -91,7 +91,7 @@ No Windows, a partir desta pasta:
 
 No Linux/macOS: `./mvnw -B -ntp test` (pode ser necessário conceder permissão de execução ao arquivo).
 
-O primeiro uso baixa Maven e dependências. Se o download automático do Wrapper falhar (bloqueio de rede/PowerShell), instale Maven 3.9.16 localmente e aponte `MAVEN_HOME` para o cache do Wrapper — sem editar o script distribuído pelo Maven.
+O primeiro uso baixa Maven e dependências. Se o download automático do Wrapper falhar (bloqueio de rede/PowerShell), instale Maven 3.9.16 localmente e aponte `MAVEN_HOME` para o cache do Wrapper, sem editar o script distribuído pelo Maven.
 
 Os testes cobrem os três golden cases, deságio, escala, HALF_EVEN, ordem de conversão, limites de entrada e aniversários de calendário. O teste de contexto genérico do scaffold foi transferido para a fase de integração com PostgreSQL isolado, para que testes de domínio não exijam banco.
 
@@ -133,7 +133,7 @@ Listas usam `page=0&size=20`, tamanho máximo 100 e desempate estável. OpenAPI 
 
 Valores financeiros entram e saem como strings JSON, com ponto decimal, sem expoentes. Números JSON não são aceitos nesses campos. Valor de face positivo, até 17 dígitos inteiros e 2 decimais significativos; cotação positiva, até 14 inteiros e 10 decimais. Não há arredondamento silencioso de entradas. Código do título tem até 100 caracteres, não pode ser vazio, remove espaços nas pontas e é sensível a maiúsculas; é único por cedente.
 
-Datas de vencimento são ISO (`AAAA-MM-DD`). Vigência cambial exige offset (`Z` ou `-03:00`), anos 0001–9999 e precisão máxima de microssegundos. Instantes retornam em UTC. A referência do relógio também é truncada a microssegundos para não consultar uma cotação futura por arredondamento do PostgreSQL.
+Datas de vencimento são ISO (`AAAA-MM-DD`). Vigência cambial exige offset (`Z` ou `-03:00`), anos entre 0001 e 9999 e precisão máxima de microssegundos. Instantes retornam em UTC. A referência do relógio também é truncada a microssegundos para não consultar uma cotação futura por arredondamento do PostgreSQL.
 
 Erros seguem `{code,message,fieldErrors}`: 400 entrada inválida, 404 cadastro inexistente, 409 duplicidade e 422 câmbio ausente/expirado. Falhas técnicas retornam 500 sem SQL/stack trace na resposta. Métodos e tipos de conteúdo inválidos preservam 405/415.
 
@@ -187,7 +187,7 @@ No PostgreSQL, um advisory lock transacional não bloqueante serializa a chave; 
 
 O extrato consulta os snapshots gravados, sem recalcular taxas, câmbio ou nomes históricos. Ordenação fixa: `settledAt DESC, id DESC`. Retorna `content`, `page`, `size`, `totalElements` e `totalPages`; cedente inexistente ou página sem resultados retorna 200 com lista vazia. A paginação por offset tem desempate estável, mas não congela a coleção: novas liquidações entre requisições podem deslocar páginas.
 
-`from` inclui o instante inicial; `to` exclui o final. Ambos são opcionais e aceitam ISO 8601 com horário e offset, anos 0001–9999 e precisão máxima de microssegundos. Quando juntos, início deve ser anterior ao fim. Datas sem horário/fuso e parâmetros inválidos retornam 400. Para o dia 14/09 no fuso -03:00, por exemplo:
+`from` inclui o instante inicial; `to` exclui o final. Ambos são opcionais e aceitam ISO 8601 com horário e offset, anos entre 0001 e 9999 e precisão máxima de microssegundos. Quando juntos, início deve ser anterior ao fim. Datas sem horário/fuso e parâmetros inválidos retornam 400. Para o dia 14/09 no fuso -03:00, por exemplo:
 
 ```text
 GET /settlements?from=2026-09-14T00:00:00-03:00&to=2026-09-15T00:00:00-03:00&currency=USD&page=0&size=20
@@ -209,10 +209,10 @@ Valores muito pequenos podem arredondar a zero segundo a regra financeira atual.
 
 ## Limitações conhecidas
 
-Escopo fechado para Fullstack Júnior: sem CI, observabilidade, optimistic locking, integração cambial externa, C4 ou Compose orquestrando a aplicação — cortes documentados em [DECISIONS.md §10](DECISIONS.md). Além disso: câmbio é cadastrado manualmente, sem autenticação na demonstração, sem histórico de importação CSV, e a fila de lote/recuperação de tentativas vive no navegador (localStorage), não no backend. Pendências de entrega (setup em ambiente limpo, acesso dos avaliadores, horário limite) em [docs/CHECKLIST-ENTREGA.md](docs/CHECKLIST-ENTREGA.md).
+Escopo fechado para Fullstack Júnior: sem CI, observabilidade, optimistic locking, integração cambial externa, C4 ou Compose orquestrando a aplicação. Cortes documentados em [DECISIONS.md §10](DECISIONS.md). Além disso: câmbio é cadastrado manualmente, sem autenticação na demonstração, sem histórico de importação CSV, e a fila de lote/recuperação de tentativas vive no navegador (localStorage), não no backend. Pendências de entrega (setup em ambiente limpo, acesso dos avaliadores, horário limite) em [docs/CHECKLIST-ENTREGA.md](docs/CHECKLIST-ENTREGA.md).
 
 ## Stack e organização
 
 Monólito para manter transação local entre título e snapshot. Java/BigDecimal preserva precisão decimal; domínio independente de Spring facilita aferir o cálculo. PostgreSQL fornece constraints/locks/transações, Flyway versiona o schema. React/TypeScript separa componentes de cadastro/importação/edição e mantém o fluxo de liquidação no painel, sem store global. Material UI reduz trabalho de controles básicos. O servidor determina valores; o navegador somente apresenta e soma centavos já calculados.
 
-Estratégia Git: branches curtas por assunto, revisão e merge, sem releases paralelas ou Git Flow completo para um case individual — GitHub Flow simplificado. O desenvolvimento funcional (motor, API, frontend) foi integrado em um único commit em `feat/project-setup`, branch padrão do repositório privado no GitHub; a partir daqui, ajustes e documentação seguem em branches curtas com PR, sem reescrever a cronologia já publicada nem simular sequência TDD retroativa. Acesso dos avaliadores: pendente, ver docs/CHECKLIST-ENTREGA.md.
+Estratégia Git: branches curtas por assunto, revisão e merge, sem releases paralelas ou Git Flow completo para um case individual (uma variação simplificada do GitHub Flow). O desenvolvimento funcional (motor, API, frontend) foi integrado em um único commit em `feat/project-setup`, branch padrão do repositório privado no GitHub; a partir daqui, ajustes e documentação seguem em branches curtas com PR, sem reescrever a cronologia já publicada nem simular sequência TDD retroativa. Acesso dos avaliadores: pendente, ver docs/CHECKLIST-ENTREGA.md.

@@ -1,4 +1,4 @@
-# Checklist de entrega — 16/09/2026
+# Checklist de entrega (16/09/2026)
 
 ## Evidências disponíveis
 
@@ -17,11 +17,11 @@
 - [x] Medir meta local de p95: 6,9136 ms, 100 requisições sequenciais BRL, após 10 aquecimentos. Ambiente/método/limitações em PERFORMANCE.md; não é carga concorrente.
 - [x] Conferir manualmente os cenários do plano com dados fictícios: usuário confirmou cadastro, edição, CSV, lote, extrato e recarga funcionando em 16/09. Testes automatizados e validação manual permanecem evidências distintas.
 - [ ] Validar setup do README em ambiente limpo/isolado, sem apagar banco existente. Primeiro download depende de rede.
-- [ ] Aferir paginação final do SPEC (1–2 páginas) no formato de apresentação escolhido.
+- [ ] Aferir paginação final do SPEC (1 a 2 páginas) no formato de apresentação escolhido.
 - [ ] Revisar arquivos destinados ao Git e segredos antes de stage; .env/logs/builds são ignorados, credenciais de demonstração não servem para produção.
 - [x] Remoto privado configurado (`origin`, GitHub); `feat/project-setup` é a branch padrão do repositório.
 - [ ] Conceder acesso aos avaliadores indicados no e-mail.
-- [ ] Documentação restante (AI_USAGE, README, limpeza geral) seguir em branches curtas por assunto com PR e descrição do porquê, conforme o padrão pedido pelo case — sem reescrever a cronologia já publicada nem inventar sequência TDD retroativa.
+- [ ] Documentação restante (AI_USAGE, README, limpeza geral) seguir em branches curtas por assunto com PR e descrição do porquê, conforme o padrão pedido pelo case, sem reescrever a cronologia já publicada nem inventar sequência TDD retroativa.
 - [ ] Confirmar senioridade da candidatura e justificar lacunas abaixo; cortes registrados não equivalem a atendimento integral da rubrica.
 - [ ] Confirmar horário limite do e-mail (data informada: 18/09), ensaiar defesa e alteração ao vivo.
 
@@ -31,7 +31,7 @@ O alvo desta candidatura é Fullstack Júnior; essas lacunas de pleno/sênior n�
 
 ## Roteiro de defesa (ensaio, não realizado)
 
-1. Explicar taxa em fração, potência exata, HALF_EVEN e ordem BRL → USD com C1–C3.
+1. Explicar taxa em fração, potência exata, HALF_EVEN e ordem BRL → USD com C1, C2 e C3.
 2. Mostrar transação, UNIQUE e locks; diferenciar dupla liquidação de replay do mesmo resultado.
 3. Demonstrar reconfirmação e recuperação sem criar chave nova em resultado incerto.
 4. Explicar o snapshot e suas diferenças para consultar cadastros atuais.
