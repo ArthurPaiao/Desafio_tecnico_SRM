@@ -17,8 +17,8 @@
 - [x] Medir meta local de p95: 6,9136 ms, 100 requisições sequenciais BRL, após 10 aquecimentos. Ambiente/método/limitações em PERFORMANCE.md; não é carga concorrente.
 - [x] Conferir manualmente os cenários do plano com dados fictícios: usuário confirmou cadastro, edição, CSV, lote, extrato e recarga funcionando em 16/09. Testes automatizados e validação manual permanecem evidências distintas.
 - [ ] Validar setup do README em ambiente limpo/isolado, sem apagar banco existente. Primeiro download depende de rede.
-- [ ] Aferir paginação final do SPEC (1 a 2 páginas) no formato de apresentação escolhido.
-- [ ] Revisar arquivos destinados ao Git e segredos antes de stage; .env/logs/builds são ignorados, credenciais de demonstração não servem para produção.
+- [x] Aferir paginação final do SPEC: 2 páginas em A4 retrato, Arial 11pt, margens padrão (renderização independente do GitHub, cujo preview de impressão apresentou bug ao trocar de orientação).
+- [x] Revisar arquivos destinados ao Git e segredos antes de stage: sem `.env` rastreado ou em disco, sem chaves/tokens no histórico; credenciais no `application.properties` são só de demonstração local, já documentadas como tal.
 - [x] Remoto privado configurado (`origin`, GitHub); `feat/project-setup` é a branch padrão do repositório.
 - [ ] Conceder acesso aos avaliadores indicados no e-mail.
 - [ ] Documentação restante (AI_USAGE, README, limpeza geral) seguir em branches curtas por assunto com PR e descrição do porquê, conforme o padrão pedido pelo case, sem reescrever a cronologia já publicada nem inventar sequência TDD retroativa.
