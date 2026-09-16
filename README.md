@@ -217,12 +217,10 @@ O Docker funciona no terminal do usuário. O ambiente da IA apresentou `AccessDe
 
 Próximo passo: revisão humana final dos documentos, setup limpo, conferência de segredos e preparação de entrega e defesa. Não tratar a implementação funcional como entrega publicada sem conferir esses itens.
 
-REVIEW do Anexo A e ER agora disponíveis. Pendências reais em docs/CHECKLIST-ENTREGA.md: setup limpo, paginação do SPEC, revisão humana/defesa, Git/remoto privado/acesso e horário limite. O escopo simplificado não atende integralmente às exigências de operação pleno/sênior (Compose da aplicação, optimistic locking, CI, observabilidade, C4); ver DECISIONS antes de apresentar o nível atendido.
+REVIEW do Anexo A e ER agora disponíveis. Pendências reais em docs/CHECKLIST-ENTREGA.md: setup limpo, paginação do SPEC, revisão humana/defesa, acesso dos avaliadores e horário limite. O escopo simplificado não atende integralmente às exigências de operação pleno/sênior (Compose da aplicação, optimistic locking, CI, observabilidade, C4); ver DECISIONS antes de apresentar o nível atendido.
 
 ### Stack e organização
 
 Monólito para manter transação local entre título e snapshot. Java/BigDecimal preserva precisão decimal; domínio independente de Spring facilita aferir o cálculo. PostgreSQL fornece constraints/locks/transações, Flyway versiona o schema. React/TypeScript separa componentes de cadastro/importação/edição e mantém o fluxo de liquidação no painel, sem store global. Material UI reduz trabalho de controles básicos. O servidor determina valores; o navegador somente apresenta e soma centavos já calculados.
 
-Estratégia Git pretendida: branches curtas por incremento, revisão e merge, sem releases paralelas ou Git Flow completo para um case individual. Estado real: feat/project-setup sem commits/remoto em 16/09. Ainda é necessário revisar os arquivos e criar commits honestos, sem simular cronologia retroativa, antes de publicar em repositório privado.
-
-Código integrado no repositório Desafio_tecnico_SRM, preservando a branch feat/project-setup e a configuração existente. Nenhum commit, remoto ou publicação foi criado nesta integração.
+Estratégia Git: branches curtas por assunto, revisão e merge, sem releases paralelas ou Git Flow completo para um case individual — GitHub Flow simplificado. O desenvolvimento funcional (motor, API, frontend) foi integrado em um único commit em `feat/project-setup`, branch padrão do repositório privado no GitHub; a partir daqui, ajustes e documentação seguem em branches curtas com PR, sem reescrever a cronologia já publicada nem simular sequência TDD retroativa. Acesso dos avaliadores: pendente, ver docs/CHECKLIST-ENTREGA.md.

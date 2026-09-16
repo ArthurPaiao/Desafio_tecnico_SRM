@@ -1,6 +1,6 @@
 # SRM Credit Engine — Decisões aprovadas
 
-Atualizado em 14/09/2026. Prazo informado pelo candidato: 18/09/2026, horário ainda não confirmado. Este documento registra as escolhas feitas na conversa e substitui decisões conflitantes do consolidado anterior. As decisões são de planejamento; não representam funcionalidades já implementadas.
+Atualizado em 16/09/2026. Prazo informado pelo candidato: 18/09/2026, horário ainda não confirmado. Este documento registra as escolhas feitas na conversa e substitui decisões conflitantes do consolidado anterior. As decisões abaixo estão implementadas e testadas, salvo onde marcado como corte de escopo na seção 10.
 
 ## 1. Prazo por vencimento
 

@@ -19,7 +19,9 @@
 - [ ] Validar setup do README em ambiente limpo/isolado, sem apagar banco existente. Primeiro download depende de rede.
 - [ ] Aferir paginação final do SPEC (1–2 páginas) no formato de apresentação escolhido.
 - [ ] Revisar arquivos destinados ao Git e segredos antes de stage; .env/logs/builds são ignorados, credenciais de demonstração não servem para produção.
-- [ ] Criar histórico honesto de commits explicáveis, configurar remoto privado e conceder acesso aos avaliadores. Em 16/09 a branch feat/project-setup ainda não tinha commits nem remoto. Não inventar datas, autores ou sequência TDD retroativa.
+- [x] Remoto privado configurado (`origin`, GitHub); `feat/project-setup` é a branch padrão do repositório.
+- [ ] Conceder acesso aos avaliadores indicados no e-mail.
+- [ ] Documentação restante (AI_USAGE, README, limpeza geral) seguir em branches curtas por assunto com PR e descrição do porquê, conforme o padrão pedido pelo case — sem reescrever a cronologia já publicada nem inventar sequência TDD retroativa.
 - [ ] Confirmar senioridade da candidatura e justificar lacunas abaixo; cortes registrados não equivalem a atendimento integral da rubrica.
 - [ ] Confirmar horário limite do e-mail (data informada: 18/09), ensaiar defesa e alteração ao vivo.
 
